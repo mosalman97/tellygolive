@@ -8,22 +8,26 @@ const port = process.env.PORT || 8080;
 
 const reChannelName = /"owner":{"videoOwnerRenderer":{"thumbnail":{"thumbnails":\[.*?\]},"title":{"runs":\[{"text":"(.+?)"/;
 
-// Schedule a ping every 10 minutes
-// cron.schedule('*/10 * * * *', () => {
-// });
-
+// Function to get the live stream URL and other details
 const getLiveStream = async (url) => {
   try {
+    // Check cache first
     let data = await cache.get(url);
 
     if (data) {
       return JSON.parse(data);
     }
 
+    // Fetch data from the URL
     const response = await fetch(url);
 
     if (!response.ok) {
       console.error(`Failed to fetch data for URL: ${url}. Status: ${response.status}`);
+
+      if (response.status === 403) {
+        return { error: 'Access forbidden. You may not have permission to access this stream.' };
+      }
+
       return { error: 'Failed to fetch data' };
     }
 
@@ -32,18 +36,22 @@ const getLiveStream = async (url) => {
     const name = reChannelName.exec(text)?.[1];
     const logo = text.match(/(?<=owner":{"videoOwnerRenderer":{"thumbnail":{"thumbnails":\[{"url":")[^=]*/)?.[0];
 
-    data = { name, stream, logo };
+    if (!stream) {
+      return { error: 'Stream not found in the response' };
+    }
+
+    // Cache data with an expiration time of 5 minutes (300 seconds)
+    data = { name, stream, logo, expiration: Date.now() + 300000 };
     await cache.set(url, JSON.stringify(data), { EX: 300 });
 
     return data;
   } catch (error) {
     console.error(`An error occurred while processing URL: ${url}`, error);
-    return { error: 'An error occurred' };
+    return { error: 'An unexpected error occurred' };
   }
 };
 
-app.use(require('express-status-monitor')());
-
+// Route to check the status of the server
 app.get('/', (req, res, nxt) => {
   try {
     res.json({ message: 'Status OK' });
@@ -53,6 +61,7 @@ app.get('/', (req, res, nxt) => {
   }
 });
 
+// Route to fetch live stream for a channel by ID
 app.get('/channel/:id.m3u8', async (req, res, nxt) => {
   try {
     const url = `https://www.youtube.com/channel/${req.params.id}/live`;
@@ -71,6 +80,7 @@ app.get('/channel/:id.m3u8', async (req, res, nxt) => {
   }
 });
 
+// Route to fetch a video stream by video ID
 app.get('/video/:id.m3u8', async (req, res, nxt) => {
   try {
     const url = `https://www.youtube.com/watch?v=${req.params.id}`;
@@ -89,6 +99,7 @@ app.get('/video/:id.m3u8', async (req, res, nxt) => {
   }
 });
 
+// Route to fetch cached items
 app.get('/cache', async (req, res, nxt) => {
   try {
     const keys = await cache.keys('*');
@@ -98,11 +109,12 @@ app.get('/cache', async (req, res, nxt) => {
     for (const key of keys) {
       const data = JSON.parse(await cache.get(key));
 
-      if (data) {
+      if (data && data.expiration > Date.now()) {
         items.push({
           url: key,
           name: data.name,
           logo: data.logo,
+          expiresIn: data.expiration - Date.now(), // Remaining time before expiration
         });
       }
     }
@@ -114,6 +126,7 @@ app.get('/cache', async (req, res, nxt) => {
   }
 });
 
+// Start the Express server
 app.listen(port, () => {
   console.log(`Express app is working on port ${port}`);
 });
