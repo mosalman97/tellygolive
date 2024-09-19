@@ -89,36 +89,14 @@ app.get("/channel/:id.m3u8", async (req, res, nxt) => {
 });
 
 // Route to fetch a video stream by video ID
-app.get("/video/:id.m3u8", async (req, res) => {
+app.get("/video/:id.m3u8", async (req, res, nxt) => {
   try {
     const url = `https://www.youtube.com/watch?v=${req.params.id}`;
     const { stream, error } = await getLiveStream(url);
-
-    if (error) {
-      console.error("Error fetching live stream:", error);
-      return res
-        .status(400)
-        .json({
-          error:
-            "Unable to retrieve live stream. Please check the video ID or try again later.",
-        });
-    }
-
-    if (stream) {
-      // Optional: Validate if the stream is a proper URL
-      const isValidUrl = /^https?:\/\//.test(stream);
-      if (isValidUrl) {
-        return res.redirect(stream);
-      } else {
-        console.error("Invalid stream URL:", stream);
-        return res.status(500).json({ error: "Invalid stream URL." });
-      }
-    }
-
-    return res.sendStatus(404); // Resource not found
+    res.redirect(stream);
   } catch (err) {
-    console.error("An error occurred in /video/:id.m3u8 route:", err);
-    return res.status(500).json({ error: "Internal server error" });
+    console.error("An error occurred in /video/:id.m3u8 route", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
