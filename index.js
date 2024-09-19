@@ -1,12 +1,13 @@
-const express = require('express');
-const fetch = require('node-fetch');
-const cron = require('node-cron');
-const cache = require('./cache');
+const express = require("express");
+const fetch = require("node-fetch");
+const cron = require("node-cron");
+const cache = require("./cache");
 
 const app = express();
 const port = process.env.PORT || 8080;
 
-const reChannelName = /"owner":{"videoOwnerRenderer":{"thumbnail":{"thumbnails":\[.*?\]},"title":{"runs":\[{"text":"(.+?)"/;
+const reChannelName =
+  /"owner":{"videoOwnerRenderer":{"thumbnail":{"thumbnails":\[.*?\]},"title":{"runs":\[{"text":"(.+?)"/;
 
 // Function to get the live stream URL and other details
 const getLiveStream = async (url) => {
@@ -22,22 +23,29 @@ const getLiveStream = async (url) => {
     const response = await fetch(url);
 
     if (!response.ok) {
-      console.error(`Failed to fetch data for URL: ${url}. Status: ${response.status}`);
+      console.error(
+        `Failed to fetch data for URL: ${url}. Status: ${response.status}`
+      );
 
       if (response.status === 403) {
-        return { error: 'Access forbidden. You may not have permission to access this stream.' };
+        return {
+          error:
+            "Access forbidden. You may not have permission to access this stream.",
+        };
       }
 
-      return { error: 'Failed to fetch data' };
+      return { error: "Failed to fetch data" };
     }
 
     const text = await response.text();
     const stream = text.match(/(?<=hlsManifestUrl":").*\.m3u8/)?.[0];
     const name = reChannelName.exec(text)?.[1];
-    const logo = text.match(/(?<=owner":{"videoOwnerRenderer":{"thumbnail":{"thumbnails":\[{"url":")[^=]*/)?.[0];
+    const logo = text.match(
+      /(?<=owner":{"videoOwnerRenderer":{"thumbnail":{"thumbnails":\[{"url":")[^=]*/
+    )?.[0];
 
     if (!stream) {
-      return { error: 'Stream not found in the response' };
+      return { error: "Stream not found in the response" };
     }
 
     // Cache data with an expiration time of 5 minutes (300 seconds)
@@ -47,22 +55,22 @@ const getLiveStream = async (url) => {
     return data;
   } catch (error) {
     console.error(`An error occurred while processing URL: ${url}`, error);
-    return { error: 'An unexpected error occurred' };
+    return { error: "An unexpected error occurred" };
   }
 };
 
 // Route to check the status of the server
-app.get('/', (req, res, nxt) => {
+app.get("/", (req, res, nxt) => {
   try {
-    res.json({ message: 'Status OK' });
+    res.json({ message: "Status OK" });
   } catch (err) {
-    console.error('An error occurred in / route', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("An error occurred in / route", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Route to fetch live stream for a channel by ID
-app.get('/channel/:id.m3u8', async (req, res, nxt) => {
+app.get("/channel/:id.m3u8", async (req, res, nxt) => {
   try {
     const url = `https://www.youtube.com/channel/${req.params.id}/live`;
     const { stream, error } = await getLiveStream(url);
@@ -75,34 +83,49 @@ app.get('/channel/:id.m3u8', async (req, res, nxt) => {
       res.sendStatus(404); // Resource not found
     }
   } catch (err) {
-    console.error('An error occurred in /channel/:id.m3u8 route', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("An error occurred in /channel/:id.m3u8 route", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Route to fetch a video stream by video ID
-app.get('/video/:id.m3u8', async (req, res, nxt) => {
+app.get("/video/:id.m3u8", async (req, res) => {
   try {
     const url = `https://www.youtube.com/watch?v=${req.params.id}`;
     const { stream, error } = await getLiveStream(url);
 
     if (error) {
-      res.status(400).json({ error }); // Use 400 for client errors
-    } else if (stream) {
-      res.redirect(stream);
-    } else {
-      res.sendStatus(404); // Resource not found
+      console.error("Error fetching live stream:", error);
+      return res
+        .status(400)
+        .json({
+          error:
+            "Unable to retrieve live stream. Please check the video ID or try again later.",
+        });
     }
+
+    if (stream) {
+      // Optional: Validate if the stream is a proper URL
+      const isValidUrl = /^https?:\/\//.test(stream);
+      if (isValidUrl) {
+        return res.redirect(stream);
+      } else {
+        console.error("Invalid stream URL:", stream);
+        return res.status(500).json({ error: "Invalid stream URL." });
+      }
+    }
+
+    return res.sendStatus(404); // Resource not found
   } catch (err) {
-    console.error('An error occurred in /video/:id.m3u8 route', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("An error occurred in /video/:id.m3u8 route:", err);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
 // Route to fetch cached items
-app.get('/cache', async (req, res, nxt) => {
+app.get("/cache", async (req, res, nxt) => {
   try {
-    const keys = await cache.keys('*');
+    const keys = await cache.keys("*");
 
     const items = [];
 
@@ -121,8 +144,8 @@ app.get('/cache', async (req, res, nxt) => {
 
     res.json(items);
   } catch (err) {
-    console.error('An error occurred in /cache route', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("An error occurred in /cache route", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
