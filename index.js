@@ -10,60 +10,6 @@ const reChannelName =
   /"owner":{"videoOwnerRenderer":{"thumbnail":{"thumbnails":\[.*?\]},"title":{"runs":\[{"text":"(.+?)"/;
 
 // Function to get the live stream URL and other details
-const getLiveStream = async (url) => {
-  try {
-    // Check cache first
-    let data = await cache.get(url);
-
-    if (data) {
-      return JSON.parse(data);
-    }
-
-    // Fetch data from the URL
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      console.error(
-        `Failed to fetch data for URL: ${url}. Status: ${response.status}`
-      );
-
-      if (response.status === 403) {
-        return {
-          error:
-            "Access forbidden. You may not have permission to access this stream.",
-        };
-      }
-
-      return { error: "Failed to fetch data" };
-    }
-
-    const text = await response.text();
-
-    // Use regex to find the stream URL (improved pattern to capture any variations)
-    const streamMatch = text.match(/"hlsManifestUrl":"([^"]+\.m3u8)"/);
-    const stream = streamMatch ? streamMatch[1].replace(/\\u0026/g, "&") : null;
-
-    const name = reChannelName.exec(text)?.[1];
-    const logoMatch = text.match(
-      /"videoOwnerRenderer":{"thumbnail":{"thumbnails":\[{"url":"([^"]+)"/
-    );
-    const logo = logoMatch ? logoMatch[1] : null;
-
-    if (!stream) {
-      console.error(`Stream not found for URL: ${url}`);
-      return { error: "Stream not found in the response" };
-    }
-
-    // Cache data with an expiration time of 5 minutes (300 seconds)
-    data = { name, stream, logo, expiration: Date.now() + 300000 };
-    await cache.set(url, JSON.stringify(data), { EX: 300 });
-
-    return data;
-  } catch (error) {
-    console.error(`An error occurred while processing URL: ${url}`, error);
-    return { error: "An unexpected error occurred" };
-  }
-};
 
 // Route to check the status of the server
 app.get("/", (req, res) => {
@@ -107,6 +53,65 @@ app.get("/video/:id.m3u8", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+const getLiveStream = async (url) => {
+  try {
+    // Check cache first
+    let data = await cache.get(url);
+
+    if (data) {
+      console.log(`Cache hit for URL: ${url}`);
+      return JSON.parse(data);
+    }
+
+    // Fetch data from the URL
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      console.error(
+        `Failed to fetch data for URL: ${url}. Status: ${response.status}`
+      );
+
+      if (response.status === 403) {
+        return {
+          error:
+            "Access forbidden. You may not have permission to access this stream.",
+        };
+      }
+
+      return { error: "Failed to fetch data" };
+    }
+
+    const text = await response.text();
+    console.log(`Fetched Response for URL: ${url}`, text); // Log response for debugging
+
+    // Use regex to find the stream URL (improved pattern to capture any variations)
+    const streamMatch = text.match(/"hlsManifestUrl":"([^"]+\.m3u8)"/);
+    const stream = streamMatch ? streamMatch[1].replace(/\\u0026/g, "&") : null;
+
+    const nameMatch = text.match(/"channelId":"[^"]+","title":"([^"]+)"/);
+    const name = nameMatch ? nameMatch[1] : null;
+
+    const logoMatch = text.match(
+      /"videoOwnerRenderer":{"thumbnail":{"thumbnails":\[{"url":"([^"]+)"/
+    );
+    const logo = logoMatch ? logoMatch[1] : null;
+
+    if (!stream) {
+      console.error(`Stream not found for URL: ${url}`);
+      return { error: "Stream not found in the response" };
+    }
+
+    // Cache data with an expiration time of 5 minutes (300 seconds)
+    data = { name, stream, logo, expiration: Date.now() + 300000 };
+    await cache.set(url, JSON.stringify(data), { EX: 300 });
+
+    return data;
+  } catch (error) {
+    console.error(`An error occurred while processing URL: ${url}`, error);
+    return { error: "An unexpected error occurred" };
+  }
+};
 
 // Route to fetch cached items
 app.get("/cache", async (req, res) => {
