@@ -69,6 +69,10 @@ app.get("/", (req, res, nxt) => {
   }
 });
 
+app.get("/tic", (req, res, nxt) => {
+  res.json({ message: "TIC CHANNEL LIVE IS WORKING FINE" });
+});
+
 // Route to fetch live stream for a channel by ID
 app.get("/channel/:id.m3u8", async (req, res, nxt) => {
   try {
@@ -97,12 +101,10 @@ app.get("/video/:id.m3u8", async (req, res, next) => {
 
     if (error) {
       console.error("Error fetching stream:", error);
-      return res
-        .status(500)
-        .json({
-          error:
-            "Unable to retrieve live stream. Please check the video ID or try again later.",
-        });
+      return res.status(500).json({
+        error:
+          "Unable to retrieve live stream. Please check the video ID or try again later.",
+      });
     }
 
     console.log("Stream URL:", stream); // Log the stream URL to verify it
