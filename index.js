@@ -38,13 +38,19 @@ const getLiveStream = async (url) => {
     }
 
     const text = await response.text();
-    const stream = text.match(/(?<=hlsManifestUrl":").*\.m3u8/)?.[0];
+
+    // Use regex to find the stream URL (improved pattern to capture any variations)
+    const streamMatch = text.match(/"hlsManifestUrl":"([^"]+\.m3u8)"/);
+    const stream = streamMatch ? streamMatch[1].replace(/\\u0026/g, "&") : null;
+
     const name = reChannelName.exec(text)?.[1];
-    const logo = text.match(
-      /(?<=owner":{"videoOwnerRenderer":{"thumbnail":{"thumbnails":\[{"url":")[^=]*/
-    )?.[0];
+    const logoMatch = text.match(
+      /"videoOwnerRenderer":{"thumbnail":{"thumbnails":\[{"url":"([^"]+)"/
+    );
+    const logo = logoMatch ? logoMatch[1] : null;
 
     if (!stream) {
+      console.error(`Stream not found for URL: ${url}`);
       return { error: "Stream not found in the response" };
     }
 
@@ -60,27 +66,18 @@ const getLiveStream = async (url) => {
 };
 
 // Route to check the status of the server
-app.get("/", (req, res, nxt) => {
-  try {
-    res.json({ message: "Status OK" });
-  } catch (err) {
-    console.error("An error occurred in / route", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.get("/tic", (req, res, nxt) => {
-  res.json({ message: "TIC CHANNEL LIVE IS WORKING FINE" });
+app.get("/", (req, res) => {
+  res.json({ message: "Status OK" });
 });
 
 // Route to fetch live stream for a channel by ID
-app.get("/channel/:id.m3u8", async (req, res, nxt) => {
+app.get("/channel/:id.m3u8", async (req, res) => {
   try {
     const url = `https://www.youtube.com/channel/${req.params.id}/live`;
     const { stream, error } = await getLiveStream(url);
 
     if (error) {
-      res.status(400).json({ error }); // Use 400 for client errors
+      res.status(400).json({ error });
     } else if (stream) {
       res.redirect(stream);
     } else {
@@ -92,13 +89,14 @@ app.get("/channel/:id.m3u8", async (req, res, nxt) => {
   }
 });
 
-// Route to fetch a video stream by video ID3
-app.get("/video/:id.m3u8", async (req, res, nxt) => {
+// Route to fetch a video stream by video ID
+app.get("/video/:id.m3u8", async (req, res) => {
   try {
     const url = `https://www.youtube.com/watch?v=${req.params.id}`;
     const { stream, error } = await getLiveStream(url);
+
     if (error) {
-      res.status(400).json({ error }); // Use 400 for client errors
+      res.status(400).json({ error });
     } else if (stream) {
       res.redirect(stream);
     } else {
@@ -111,7 +109,7 @@ app.get("/video/:id.m3u8", async (req, res, nxt) => {
 });
 
 // Route to fetch cached items
-app.get("/cache", async (req, res, nxt) => {
+app.get("/cache", async (req, res) => {
   try {
     const keys = await cache.keys("*");
 
@@ -139,5 +137,5 @@ app.get("/cache", async (req, res, nxt) => {
 
 // Start the Express server
 app.listen(port, () => {
-  console.log(`Express app is working on port ${port}`);
+  console.log(`Express app is running on port ${port}`);
 });
