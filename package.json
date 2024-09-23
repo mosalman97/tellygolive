@@ -2,21 +2,17 @@
   "name": "obs-rtmp-to-hls-stream",
   "version": "1.0.0",
   "description": "A Node.js application that streams video from OBS via RTMP, transcodes it into HLS using FFmpeg, and serves it over HTTP.",
-  "main": "app.js",
+  "main": "index.js",
   "scripts": {
     "start": "node .",
     "dev": "nodemon app.js"
   },
   "repository": {
-    "type": "git",
-    "url": "git+https://github.com/your-username/obs-rtmp-to-hls-stream.git"
+    "type": "git"
   },
-  "author": "Your Name",
+  "author": "mohamad salman",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/your-username/obs-rtmp-to-hls-stream/issues"
-  },
-  "homepage": "https://github.com/your-username/obs-rtmp-to-hls-stream#readme",
+  "bugs": {},
   "dependencies": {
     "express": "^4.21.0",
     "node-media-server": "^2.7.0",
