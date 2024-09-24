@@ -35,8 +35,27 @@ app.get("/", (req, res) => {
   res.send("Live streaming server is running.");
 });
 
+// Keep-alive route
+app.get("/health", (req, res) => {
+  res.status(200).send("Server is healthy");
+});
+
 // Start Express server
 const port = 5050;
 app.listen(port, () => {
   console.log(`Express server is running on http://localhost:${port}`);
 });
+
+setInterval(() => {
+  fetch(`https://tellygolive.onrender.com//health`)
+    .then((response) => {
+      if (!response.ok) {
+        console.error("Health check failed:", response.statusText);
+      } else {
+        console.log("Server is healthy");
+      }
+    })
+    .catch((error) => {
+      console.error("Error pinging health check:", error);
+    });
+}, 10000);
