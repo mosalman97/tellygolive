@@ -47,7 +47,7 @@ app.listen(port, () => {
 });
 
 setInterval(() => {
-  fetch(`https://tellygolive.onrender.com//health`)
+  fetch(`https://tellygolive.onrender.com/health`)
     .then((response) => {
       if (!response.ok) {
         console.error("Health check failed:", response.statusText);
