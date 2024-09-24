@@ -19,9 +19,9 @@ function startFFmpeg() {
     "-hls_time",
     "10", // Each HLS segment duration (in seconds)
     "-hls_list_size",
-    "5", // Number of segments to keep in the playlist
+    "10", // Number of segments to keep in the playlist
     "-hls_flags",
-    "delete_segments", // Delete older segments
+    "append_list", // Append to the playlist instead of deleting old segments
     "-hls_segment_filename",
     `${outputDir}/segment_%03d.ts`, // Segment files
     `${outputDir}/stream.m3u8`, // HLS playlist file
@@ -34,6 +34,11 @@ function startFFmpeg() {
 
   ffmpeg.on("close", (code) => {
     console.log(`FFmpeg process exited with code ${code}`);
+    // Attempt to restart FFmpeg if it exits
+    if (code !== 0) {
+      console.log("Restarting FFmpeg...");
+      startFFmpeg(); // Restart FFmpeg if it exits unexpectedly
+    }
   });
 }
 
