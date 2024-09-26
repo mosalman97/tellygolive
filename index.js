@@ -25,13 +25,13 @@ app.get("/health", (req, res) => {
 const config = {
   rtmp: {
     port: 1935, // RTMP streaming port
-    chunk_size: 60000,
+    chunk_size: 80000,
     gop_cache: true,
     ping: 30,
     ping_timeout: 60,
   },
   http: {
-    port: 8000, // HTTP server for serving HLS streams
+    port: 4000, // HTTP server for serving HLS streams
     allow_origin: "*",
   },
   trans: {
